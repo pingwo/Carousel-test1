@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<style>
+    /** 图片框样式 */
+    #my-slider {
+        position: relative;
+        width: 790px;
+        height: 340px;
+    }
+
+    /* 轮播图片 */
+    .slider-list ul {
+        list-style-type: none;
+        position: relative;
+        padding: 0;
+        margin: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    .slider-list_item--default,
+    .slider-list_item {
+        position: absolute;
+        transition: opacity 1s;
+        text-align: center;
+        opacity: 0;
+    }
+
+    .slider-list_item--default {
+        transition: opacity 1s;
+        opacity: 1;
+    }
+
+    /* 按钮 */
+    .slider-list_control {
+        position: relative;
+        display: table;
+        background-color: rgba(255, 255, 255, 0.5);
+        padding: 5px;
+        border-radius: 12px;
+        bottom: 30px;
+        margin: auto;
+    }
+
+    .slider-list_buttons--default,
+    .slider-list_buttons {
+        display: inline-block;
+        width: 15px;
+        height: 15px;
+        border-radius: 50%;
+        margin: 0 5px;
+        background-color: white;
+        cursor: pointer;
+    }
+
+    .slider-list_buttons--default {
+        background-color: red;
+    }
+
+    .slider-list_next,
+    .slider-list_pervious {
+        display: inline-block;
+        position: absolute;
+        top: 50%;
+        margin-top: -25px;
+        width: 30px;
+        height: 50px;
+        text-align: center;
+        font-size: 24px;
+        line-height: 50px;
+        overflow: hidden;
+        border: none;
+        background: transparent;
+        color: white;
+        background: rgba(0, 0, 0, 0.2);
+        cursor: pointer;
+        opacity: 0;
+        transition: opacity 1s;
+    }
+
+    .slider-list_pervious {
+        left: 0;
+    }
+
+    .slider-list_next {
+        right: 0;
+    }
+
+    .slider-list_pervious::after {
+        content: '<';
+    }
+
+    .slider-list_next::after {
+        content: '>';
+    }
+
+    #my-slider:hover .slider-list_pervious {
+        opacity: 1;
+    }
+
+    #my-slider:hover .slider-list_next {
+        opacity: 1;
+    }
+</style>
+
+<body>
+    <div id="my-slider" class="slider-list">
+        <!-- 轮播图的图片无序列表， 每一个li代表一个图片 -->
+        <ul>
+            <li class="slider-list_item--default">
+                <img src="https://p5.ssl.qhimg.com/t0119c74624763dd070.png" />
+            </li>
+            <li class="slider-list_item">
+                <img src="https://p4.ssl.qhimg.com/t01adbe3351db853eb3.jpg" />
+            </li>
+            <li class="slider-list_item">
+                <img src="https://p2.ssl.qhimg.com/t01645cd5ba0c3b60cb.jpg" />
+            </li>
+            <li class="slider-list_item">
+                <img src="https://p4.ssl.qhimg.com/t01331ac159b58f5478.jpg" />
+            </li>
+        </ul>
+        <!-- 轮播图两侧的按钮，负责控制轮播图的上下页滚动 -->
+        <a class="slider-list_next"></a>
+        <a class="slider-list_pervious"></a>
+        <!-- 轮播图底侧按钮，负责表示当前图片序号以及点击后滚动到目标图片 -->
+        <div class="slider-list_control">
+            <span class="slider-list_buttons--default"></span>
+            <span class="slider-list_buttons"></span>
+            <span class="slider-list_buttons"></span>
+            <span class="slider-list_buttons"></span>
+        </div>
+    </div>
+
+    <script>
+        class Slider {
+            constructor(id, cycle = 3000) {
+                //定义图片框这个容器，我们可以凭借这个容器拿到图片框中任意一个元素
+                this.container = document.getElementById(id);
+                this.items = this.container.querySelectorAll('.slider-list_item--default, .slider-list_item')
+                this.cycle = cycle
+                const controller = this.container.querySelector('.slider-list_control')
+                if (controller) {
+                    const buttons = controller.querySelectorAll('.slider-list_buttons--default, .slider-list_buttons')
+                    controller.addEventListener('mouseover', (event) => {
+                        //这行代码的意思是index会动态获取到每次鼠标移动到某个元素上的下标
+                        //拿到下标后判断是否为默认值，不是默认值就跳转到对应的图片
+                        const index = Array.from(buttons).indexOf(event.target)
+                        if (index >= 0) { //'>=0' 不是默认值
+                            this.sliderTo(index)
+                            this.stop()
+                        }
+                    })
+                    //鼠标移开后接着开始轮播图的播放
+                    controller.addEventListener('mouseout', (event) => {
+                        this.start()
+                    })
+
+                    //这个是控制按钮的颜色变化，到哪一个图按钮就会变为红色
+                    this.container.addEventListener('slide', (event) => {
+                        const index = event.detail.index
+                        const selected = controller.querySelector('.slider-list_buttons--default')
+                        if (selected) {
+                            selected.className = 'slider-list_buttons'
+                            buttons[index].className = 'slider-list_buttons--default'
+                        }
+                    })
+                }
+                //这是控制两侧的按钮监听click事件，当我们点击左右两侧的按钮时，可以控制轮播图的前进后退
+                const previous = this.container.querySelector('.slider-list_pervious');
+                if (previous) {
+                    previous.addEventListener('click', (event) => {
+                        this.stop()
+                        this.sliderPervious()
+                        this.start()
+                        event.preventDefault()
+                    })
+                }
+                const next = this.container.querySelector('.slider-list_next')
+                if (next) {
+                    next.addEventListener('click', (event) => {
+                        this.stop()
+                        this.sliderNext()
+                        this.start()
+                        event.preventDefault()
+                    })
+                }
+            }
+
+            getSelectedItem() {
+                // 返回当前被选中的元素
+                const selected = this.container.querySelector('.slider-list_item--default')
+                return selected
+            }
+            getSelectedItemIndex() {
+                //浅拷贝这个数组item，并使用indexOf找到当前被选中的元素的下标
+                return Array.from(this.items).indexOf(this.getSelectedItem())
+            }
+            sliderTo(index) {
+                const selected = this.getSelectedItem()
+                // 当前被选中元素改颜色
+                if (selected) {
+                    selected.className = 'slider-list_item'
+                }
+                //
+                const item = this.items[index]
+                if (item) {
+                    item.className = 'slider-list_item--default'
+                }
+
+                const detail = { index: index }
+                //这里表示我们创造了一个slide事件
+                const event = new CustomEvent('slide', { bubbles: true, detail })
+                //把事件event派发给container
+                this.container.dispatchEvent(event)
+            }
+
+            sliderNext() {
+                //获取当前轮播图的下标，通过计算让下标加一，调用方法sliderto变换图片
+                const currentIndex = this.getSelectedItemIndex()
+                const nextIndex = (currentIndex + 1) % this.items.length
+                this.sliderTo(nextIndex)
+            }
+            sliderPervious() {
+                const currentIndex = this.getSelectedItemIndex()
+                const perviousIndex = (currentIndex - 1 + this.items.length) % this.items.length
+                this.sliderTo(perviousIndex)
+            }
+            start() {
+                this.stop()
+                this._timer = setInterval(() => {
+                    this.sliderNext()
+                }, this.cycle)
+            }
+            stop() {
+                clearInterval(this._timer)
+            }
+
+        }
+
+        const slider = new Slider('my-slider')
+        slider.start()
+        //调用启动方法启动轮播图
+
+    </script>
+
+</body>
+
+</html>
